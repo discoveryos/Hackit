@@ -1,62 +1,49 @@
-# Chronomaly
 
-Chronomaly is a kernel exploit for the Android / Linux kernel using CVE-2025-38352. The exploit was written specifically for Linux kernel v5.10.157, but should work against all vulnerable v5.10.x kernels, as it does not require any specific kernel text offsets to work.
+# Hackit (`hit`)
 
-I covered the vulnerability in detail in a three-part blog post series, all the way from PoC to exploit:
+**Ethical CVE Exploit Package Manager**  
+Made by **Kevin Dan Mathew**
 
-- Part 1 - [In-the-wild Android Kernel Vulnerability Analysis + PoC](https://faith2dxy.xyz/2025-12-22/cve_2025_38352_analysis/)
-- Part 2 - [Extending The Race Window Without a Kernel Patch](https://faith2dxy.xyz/2025-12-24/cve_2025_38352_analysis_part_2/)
-- Part 3 - [Uncovering Chronomaly](https://faith2dxy.xyz/2026-01-03/cve_2025_38352_analysis_part_3/)
+---
 
-![demo](./demo.gif)
+## 🛡 Overview
 
-# Build Setup
+Hackit (`hit`) is an **ethical security testing framework** that acts like a **package manager for CVE test cases**.
 
-This exploit has only been tested against an x86_64 Linux kernel v5.10.157 running in QEMU. I asked a friend to send me their Pixel 6a kernel config to base my kernel config off of, and these are the config options important for this exploit (I started from the kernelCTF config as a base):
+It allows security researchers, students, and defenders to:
+- Fetch CVE information
+- Install CVE test packages
+- Execute **safe, sandboxed tests**
+- Lock, uninstall, and audit CVE activity
 
-- `CONFIG_POSIX_CPU_TIMERS_TASK_WORK=n`
-- `CONFIG_PREEMPT=y` (Full Preemption, no RT)
-- `CONFIG_SLAB_MERGE_DEFAULT=n`
-- `DEBUG_LIST=n`
-- `BUG_ON_DATA_CORRUPTION=n`
-- `LIST_HARDENED=n`
+> ⚠️ Hackit ships in **safe demo mode**.  
+> No real exploitation or destructive actions are performed.
 
-To disable `CONFIG_POSIX_CPU_TIMERS_TASK_WORK`, you can follow the steps laid out in my first blog post [here](https://faith2dxy.xyz/2025-12-22/cve_2025_38352_analysis/#config_posix_cpu_timers_task_work).
+---
 
-Refer to the `qemu.sh` file for my QEMU run script. I used 4 cores and 3 GB RAM for testing.
+## ✨ Features
 
-# Exploit parameters you'll need to change
+- 📦 CVE‑based package management
+- 🧪 `install` installs **and executes** CVE tests (with confirmation)
+- 🔒 CVE locking to prevent execution
+- 📡 Metadata retrieval without execution
+- 📄 JSON reporting for audits
+- 🧩 Plugin‑style CVE packages
+- 🖥 Cyberpunk ASCII CLI branding
+- ⚖️ Strong ethical and legal safeguards
 
-Since the exploit depends on CPU timers, there are two parameters you may need to change to adapt it to your environment.
+---
+chmod +x hit.py hit.sh
 
-## `CPU_USAGE_THRESHOLD`
+## 📂 Project Structure
 
-This parameter is used when consuming CPU time to fire the timers inside the `race_func()`. It must be set such that:
+---
 
-- The timers don't fire on every retry attempt (this would imply that `CPU_USAGE_THRESHOLD` is too high, as the timers are firing before the `race_func()` thread can exit).
-- The timers only fire sometimes (this would imply that sometimes the timers fire before the thread exits, and other times it fires while the thread exits).
+## 🚀 Installation
 
-To determine whether the timers are firing or not, insert a `printf()` statement in the `SIGUSR1` polling code in `free_func()`. If you see the message print out, that means the timers fired.
+### 1️⃣ Clone the repository
+```bash
+git clone https://github.com/yourusername/hackit.gitchmod +x hit.py hit.sh
+cd hackit
+chomd +x hit.py hit.sh
 
-If set correctly, you'll start seeing the "Parent raced too late / too early" messages in the terminal.
-
-## `PARENT_SETTIME_DELAY_US`
-
-`PARENT_SETTIME_DELAY_US`. This parameter is used by the parent process to hit the 2nd race window inside `send_sigqueue()` at the same time as the child process. Run the exploit, observe, and modify it as follows:
-
-- The message "Parent raced too late, readjusting..." appears too often – reduce this parameter. 
-- The message "Parent raced too early, readjusting..." appears too often – increase this parameter.
-
-Ideally, you want to see both "raced too late" and "raced too early" being printed out, and the exploit will work within 1 minute. If you only see one occurring more than the other, adjust accordingly.
-
-# Potential Improvements
-
-In my cross-cache implementation, I assumed that the kernel is not too busy, and that there haven't been many `struct sigqueue` allocations. I added a comment in `sigqueue_crosscache_preallocs()` that explains what you would need to do improve this.
-
-If the kernel is really busy, or there are already some `struct sigqueue` slab pages on the per-cpu / per-node partial list, then the current cross-cache implementation in `exploit.c` will fail, and the `uaf_sigqueue` / `realloc_sigqueue` won't be re-allocated as a pipe buffer data page.
-
-I purposely chose not to make the cross-cache work in a busy kernel, so that the exploit doesn't get misused :)
-
-# Questions
-
-If you have any questions, please contact me via X / Twitter!
